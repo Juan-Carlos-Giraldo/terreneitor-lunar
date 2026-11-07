@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Terreneitor Lunar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{--bg:#050805;--card:#081008;--text:#33ff66;--muted:#1f9c44;--line:#1f7a3a;--warn:#ffb000;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Courier New",Consolas,ui-monospace,monospace;background:var(--bg);color:var(--text);padding:max(16px,env(safe-area-inset-top,0px)) 16px 16px;max-width:1200px;margin-inline:auto}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(0,0,0,.25) 0 1px,transparent 1px 3px);z-index:9}
+h1{font-size:1.4rem;margin:0 0 6px;font-weight:normal;text-shadow:0 0 6px var(--text)}
+h2{font-size:1rem;margin:0 0 10px;text-transform:uppercase;text-shadow:0 0 6px var(--text)}
+h2::before{content:"> "}
+h1::before{content:"root@cohete:~$ "}
+.hidden{display:none !important}
+.note,.l{color:var(--muted);font-size:.85rem}
+.warn{color:var(--warn)}
+
+header.top{display:flex;gap:16px;align-items:stretch;flex-wrap:wrap;border:1px solid var(--line);padding:12px;margin-bottom:16px;background:var(--card)}
+.logo{width:240px;height:135px;border:1px dashed var(--line);display:flex;align-items:center;justify-content:center;color:var(--muted);flex-shrink:0}
+.info{flex:1;min-width:220px}
+.info p{margin:0;color:var(--muted)}
+nav{display:flex;flex-direction:column;justify-content:center;gap:10px;border-left:1px solid var(--line);padding-left:16px}
+
+.hero{border:1px solid var(--line);height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;margin-bottom:16px;background:var(--card);text-align:center;padding:16px}
+input[type=file]{color:var(--text);font-family:inherit}
+
+.tabs{display:flex;gap:8px;margin-bottom:16px}
+.tabs button{background:var(--bg);color:var(--text);border:1px solid var(--line);font-family:inherit;padding:8px 14px;cursor:pointer}
+.tabs button.on{background:var(--text);color:var(--bg)}
+
+.card{background:var(--card);border:1px solid var(--line);padding:16px;box-shadow:0 0 12px rgba(51,255,102,.15);min-width:0}
+.stack{display:flex;flex-direction:column;gap:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.v{font-size:1.3rem;font-weight:600}
+.chart{position:relative;height:260px}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+.scroll{overflow-x:auto}
+ul{margin:6px 0 0 18px;padding:0}
+li{margin-bottom:6px}
+
+@media (max-width:760px){
+  .grid2{grid-template-columns:1fr}
+  nav{border-left:none;border-top:1px solid var(--line);padding:12px 0 0;flex-direction:row;flex-wrap:wrap;gap:16px}
+  .logo{width:100%;height:160px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="logo">[ logo ]</div>
+  <div class="info">
+    <h1>Terreneitor Lunar</h1>
+    <p>Programa terrestre que a veces sube unos metros por encima de la tierra</p>
+  </div>
+  <nav>
+    <span>Expediciones pasadas</span>
+    <span>Bitacora</span>
+    <span>Videos e imagenes</span>
+  </nav>
+</header>
+
+<section class="hero">
+  <div class="note">&gt; cargar datos del vuelo (CSV)</div>
+  <input type="file" id="file" accept=".csv,text/csv">
+  <div id="msg" class="note"></div>
+</section>
+
+<div id="app" class="hidden">
+
+  <div class="tabs">
+    <button class="on" data-tab="vista">Resumen</button>
+    <button data-tab="analisis">Análisis</button>
+  </div>
+
+  <div id="p-vista" class="stack">
+    <div class="card">
+      <h2>Resumen de vuelo</h2>
+      <div class="kpis" id="kpis"></div>
+      <div class="note" id="cobertura" style="margin-top:10px"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>Fases de vuelo</h2><div class="scroll"><table id="fases"></table></div></div>
+      <div class="card"><h2>Altitud</h2><div class="chart"><canvas id="cAlt"></canvas></div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>Aceleración</h2><div class="chart"><canvas id="cAcc"></canvas></div></div>
+      <div class="card"><h2>Giroscopio</h2><div class="chart"><canvas id="cGyr"></canvas></div></div>
+    </div>
+  </div>
+
+  <div id="p-analisis" class="stack hidden">
+    <div class="card">
+      <h2>Calidad de los datos</h2>
+      <div id="calidad"></div>
+      <h2 style="margin-top:16px">Limitaciones de este vuelo</h2>
+      <ul>
+        <li>El archivo termina en DESCENSO, a unos 3.6 m, antes del aterrizaje.</li>
+        <li><code>vbat</code> está fija en 0.28 V; no es confiable hasta revisar el divisor de tensión.</li>
+        <li>La aceleración en reposo no es exactamente 1 g: el sensor necesita calibración de offset.</li>
+        <li>Hay pérdida de paquetes por WiFi; el ESP32 guarda la copia oficial del vuelo.</li>
+      </ul>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>Análisis de altura durante vuelo</h2><div id="an-alt"></div></div>
+      <div class="card"><h2>Análisis de aceleración durante despegue</h2><div id="an-acc"></div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>Aceleración</h2><div class="scroll"><table id="calib-acc"></table></div></div>
+      <div class="card"><h2>Análisis de giroscopio durante vuelo</h2><div id="an-gyr"></div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const FASES=['ARMADO','LISTO','IMPULSO','ASCENSO','APOGEO','DESCENSO','ATERRIZADO'];
+const FLAGS={1:'Acelerómetro saturado (16 g)',2:'Impacto',4:'Falla de sensor',8:'Paracaídas abierto'};
+const $=id=>document.getElementById(id);
+const fx=(x,d=2)=>Number.isFinite(x)?x.toFixed(d):'—';
+const mean=a=>a.reduce((s,v)=>s+v,0)/a.length;
+let charts=[];
+
+Chart.defaults.color='#33ff66';
+Chart.defaults.font.family='"Courier New", monospace';
+Chart.defaults.borderColor='#1f7a3a88';
+
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);
+  const h=lines[0].split(',').map(s=>s.trim());
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const p=lines[i].split(',');
+    if(p.length<h.length) continue;
+    const o={};
+    h.forEach((k,j)=>{o[k]=k==='hora_pc'?p[j]:Number(p[j]);});
+    if(Number.isFinite(o.t_ms)&&Number.isFinite(o.seq)) rows.push(o);
+  }
+  return rows;
+}
+
+function analyze(rows){
+  const t0=rows[0].t_ms;
+  rows.forEach(r=>{
+    r.t=(r.t_ms-t0)/1000;
+    r.a=Math.hypot(r.ax,r.ay,r.az);
+    r.g=Math.hypot(r.gx,r.gy,r.gz);
+  });
+  const seqs=rows.map(r=>r.seq);
+  const seqMin=Math.min(...seqs), seqMax=Math.max(...seqs);
+  const esperados=seqMax-seqMin+1;
+  const perdidos=esperados-rows.length;
+
+  const dts=[];
+  for(let i=1;i<rows.length;i++) dts.push(rows[i].t_ms-rows[i-1].t_ms);
+
+  const fases=[];
+  let cur=null;
+  rows.forEach(r=>{
+    if(!cur||cur.estado!==r.estado){cur={estado:r.estado,inicio:r.t,fin:r.t,n:0};fases.push(cur);}
+    cur.fin=r.t; cur.n++;
+  });
+
+  const ap=rows.reduce((m,r)=>r.alt_m>m.alt_m?r:m,rows[0]);
+  const maxA=rows.reduce((m,r)=>r.a>m.a?r:m,rows[0]);
+  const maxG=rows.reduce((m,r)=>r.g>m.g?r:m,rows[0]);
+  const vb=rows.map(r=>r.vbat);
+  const flags=new Map();
+  rows.forEach(r=>flags.set(r.flags,(flags.get(r.flags)||0)+1));
+
+  const reposo=rows.filter(r=>r.estado===0);
+  const calib=['ax','ay','az','gx','gy','gz'].map(k=>{
+    const v=reposo.map(r=>r[k]);
+    return {k,media:v.length?mean(v):NaN,min:v.length?Math.min(...v):NaN,max:v.length?Math.max(...v):NaN};
+  });
+
+  return {rows,seqMin,seqMax,esperados,perdidos,dts,fases,ap,maxA,maxG,vb,flags,calib,
+    dur:rows[rows.length-1].t,fecha:rows[0].hora_pc,reposo:reposo.length};
+}
+
+function renderKpis(s){
+  const k=[
+    ['Duración captura',fx(s.dur,1)+' s'],
+    ['Muestras',s.rows.length.toLocaleString('es')],
+    ['Altura máxima',fx(s.ap.alt_m,2)+' m'],
+    ['Instante apogeo',fx(s.ap.t,2)+' s'],
+    ['Aceleración máx.',fx(s.maxA.a,2)+' g'],
+    ['Giro máx.',fx(s.maxG.g,0)+' °/s'],
+    ['Pérdida de paquetes',fx(s.perdidos/s.esperados*100,1)+' %'],
+    ['Intervalo medio',fx(mean(s.dts),1)+' ms']
+  ];
+  $('kpis').innerHTML=k.map(([l,v])=>`<div><div class="v">${v}</div><div class="l">${l}</div></div>`).join('');
+  $('cobertura').textContent=`Vuelo registrado el ${s.fecha.replace('T',' ').slice(0,19)}. Paquetes esperados: ${s.esperados.toLocaleString('es')}; recibidos: ${s.rows.length.toLocaleString('es')}.`;
+}
+
+function renderFases(s){
+  const filas=s.fases.map(f=>`<tr><td>${f.estado} · ${FASES[f.estado]||'?'}</td><td>${fx(f.inicio,2)}</td><td>${fx(f.fin,2)}</td><td>${fx(f.fin-f.inicio,2)}</td><td>${f.n}</td></tr>`).join('');
+  $('fases').innerHTML=`<tr><th>Fase</th><th>Inicio (s)</th><th>Fin (s)</th><th>Duración (s)</th><th>Muestras</th></tr>${filas}`;
+}
+
+function renderCalidad(s){
+  const vmin=Math.min(...s.vb), vmax=Math.max(...s.vb);
+  const vWarn=(vmax-vmin)<0.01
+    ?`<p class="warn">⚠ <code>vbat</code> es constante (${fx(vmin,2)} V). Probablemente es un error del ADC o del divisor.</p>`
+    :`<p>Voltaje de batería entre ${fx(vmin,2)} y ${fx(vmax,2)} V.</p>`;
+  const flagsTxt=[...s.flags.entries()].sort((a,b)=>b[1]-a[1]).map(([f,n])=>{
+    const desc=Object.keys(FLAGS).filter(b=>f&b).map(b=>FLAGS[b]).join(', ')||'Todo normal';
+    return `<tr><td>${f}</td><td>${desc}</td><td>${n.toLocaleString('es')}</td></tr>`;
+  }).join('');
+  $('calidad').innerHTML=`
+    <p>Paquetes perdidos: <strong>${s.perdidos.toLocaleString('es')}</strong> de ${s.esperados.toLocaleString('es')} (seq ${s.seqMin} a ${s.seqMax}).</p>
+    <p>Intervalo entre muestras: mínimo ${Math.min(...s.dts)} ms, máximo ${Math.max(...s.dts)} ms.</p>
+    ${vWarn}
+    <div class="scroll"><table><tr><th>Flags</th><th>Significado</th><th>Muestras</th></tr>${flagsTxt}</table></div>`;
+}
+
+function renderAnalisis(s){
+  const r=s.rows;
+  const e=n=>r.filter(x=>x.estado===n);
+  const ini=n=>{const f=s.fases.find(f=>f.estado===n);return f?f.inicio:null;};
+  const imp=e(2), asc=e(3);
+
+  // Altura
+  const tAsc=ini(3), tApo=s.ap.t, ult=r[r.length-1];
+  const vDesc=(s.ap.alt_m-ult.alt_m)/(ult.t-s.ap.t);
+  $('an-alt').innerHTML=`<table>
+    <tr><td>Altura máxima</td><td>${fx(s.ap.alt_m)} m</td></tr>
+    <tr><td>Instante del apogeo</td><td>${fx(tApo)} s</td></tr>
+    <tr><td>Inicio de ascenso (estado 3)</td><td>${tAsc!=null?fx(tAsc)+' s':'—'}</td></tr>
+    <tr><td>Tiempo de ascenso</td><td>${tAsc!=null?fx(tApo-tAsc)+' s':'—'}</td></tr>
+    <tr><td>Velocidad media de descenso</td><td>${fx(vDesc)} m/s</td></tr></table>`;
+
+  // Aceleración en despegue
+  if(imp.length){
+    const pico=imp.reduce((m,x)=>x.a>m.a?x:m,imp[0]);
+    $('an-acc').innerHTML=`<table>
+      <tr><td>Inicio de impulso</td><td>${fx(imp[0].t)} s</td></tr>
+      <tr><td>Duración del impulso</td><td>${fx(imp[imp.length-1].t-imp[0].t)} s</td></tr>
+      <tr><td>Pico de |a| en impulso</td><td>${fx(pico.a)} g en t=${fx(pico.t)} s</td></tr>
+      <tr><td>|a| media en impulso</td><td>${fx(mean(imp.map(x=>x.a)))} g</td></tr>
+      <tr><td>Pico global de |a|</td><td>${fx(s.maxA.a)} g en t=${fx(s.maxA.t)} s (estado ${s.maxA.estado})</td></tr></table>`;
+  } else {
+    $('an-acc').innerHTML='<p>Sin muestras en fase IMPULSO.</p>';
+  }
+
+  // Giroscopio en ascenso
+  if(asc.length){
+    const maxAbs=k=>Math.max(...asc.map(x=>Math.abs(x[k])));
+    $('an-gyr').innerHTML=`<table>
+      <tr><td>Máx |gx| en ascenso</td><td>${fx(maxAbs('gx'),0)} °/s</td></tr>
+      <tr><td>Máx |gy| en ascenso</td><td>${fx(maxAbs('gy'),0)} °/s</td></tr>
+      <tr><td>Máx |gz| en ascenso</td><td>${fx(maxAbs('gz'),0)} °/s</td></tr>
+      <tr><td>Máx |g| total en ascenso</td><td>${fx(Math.max(...asc.map(x=>x.g)),0)} °/s</td></tr></table>`;
+  } else {
+    $('an-gyr').innerHTML='<p>Sin muestras en fase ASCENSO.</p>';
+  }
+}
+
+function renderCalib(s){
+  if(!s.reposo){$('calib-acc').innerHTML='<tr><td>No hay muestras en fase ARMADO.</td></tr>';return;}
+  const filas=s.calib.filter(c=>c.k[0]==='a').map(c=>`<tr><td>${c.k}</td><td>${fx(c.media,3)}</td><td>${fx(c.min,3)}</td><td>${fx(c.max,3)}</td></tr>`).join('');
+  $('calib-acc').innerHTML=`<tr><th>Eje</th><th>Media (g)</th><th>Mínimo</th><th>Máximo</th></tr>${filas}`;
+}
+
+function lineChart(id,rows,series,yLabel){
+  const step=Math.max(1,Math.ceil(rows.length/1500));
+  const pts=rows.filter((_,i)=>i%step===0);
+  return new Chart($(id),{
+    type:'line',
+    data:{datasets:series.map(s=>({
+      label:s.label,borderColor:s.color,borderWidth:1.5,pointRadius:0,tension:.2,
+      data:pts.map(r=>({x:r.t,y:r[s.key]}))
+    }))},
+    options:{animation:false,parsing:false,normalized:true,
+      scales:{x:{type:'linear',title:{display:true,text:'Tiempo desde encendido (s)'}},
+              y:{title:{display:true,text:yLabel}}}}
+  });
+}
+
+function renderCharts(s){
+  charts.forEach(c=>c.destroy()); charts=[];
+  charts.push(lineChart('cAlt',s.rows,[{key:'alt_m',label:'Altitud (m)',color:'#33ff66'}],'Altitud (m)'));
+  charts.push(lineChart('cAcc',s.rows,[
+    {key:'a',label:'|a| (g)',color:'#ffb000'},
+    {key:'az',label:'az (g)',color:'#00ccff'}],'Aceleración (g)'));
+  charts.push(lineChart('cGyr',s.rows,[
+    {key:'gx',label:'gx',color:'#ffb000'},
+    {key:'gy',label:'gy',color:'#00ccff'},
+    {key:'gz',label:'gz',color:'#ff4d4d'}],'°/s'));
+}
+
+function render(s){
+  renderKpis(s); renderFases(s); renderCalidad(s); renderCalib(s); renderAnalisis(s); renderCharts(s);
+  $('app').classList.remove('hidden');
+}
+
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  $('p-vista').classList.toggle('hidden',b.dataset.tab!=='vista');
+  $('p-analisis').classList.toggle('hidden',b.dataset.tab!=='analisis');
+}));
+
+$('file').addEventListener('change',async e=>{
+  const f=e.target.files[0];
+  if(!f) return;
+  try{
+    const rows=parseCSV(await f.text());
+    if(rows.length<2){$('msg').textContent='El archivo no tiene datos válidos.';return;}
+    $('msg').textContent=`Cargado: ${f.name}`;
+    render(analyze(rows));
+  }catch(err){
+    $('msg').textContent='Error al leer el archivo: '+err.message;
+  }
+});
+</script>
+</body>
+</html>
