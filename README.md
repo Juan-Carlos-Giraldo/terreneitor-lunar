@@ -127,6 +127,77 @@ todas las filas válidas, incluidos duplicados.
 - Las gráficas reducen el número de puntos a aproximadamente 1.500 como máximo
   para mantener una visualización fluida; conservan el último punto.
 
+## Qué muestra Arreglos
+
+La pestaña **Arreglos** prepara un subconjunto para estudiar el lanzamiento y el
+vuelo sin las fases de espera en tierra:
+
+- conserva filas con `estado` **2 a 6**: IMPULSO, ASCENSO, APOGEO, DESCENSO y
+  ATERRIZADO;
+- excluye ARMADO, LISTO y cualquier estado no incluido en ese rango;
+- informa el total original, las filas de vuelo conservadas y las filas
+  excluidas;
+- muestra cuántas muestras conservadas corresponden a cada estado;
+- reinicia el eje temporal de sus gráficas a cero en la primera muestra
+  conservada, e indica el tiempo T+ de esa muestra en la captura original;
+- presenta altitud y aceleración (`√(ax² + ay² + az²)` y `az`) únicamente para el
+  subconjunto de vuelo.
+
+Este paso es un **recorte por estado**, no una eliminación ni una corrección del
+ruido de los sensores. No modifica ni suaviza las mediciones, no quita outliers y
+no interpola huecos: así se preservan las muestras observadas.
+
+### Modelo de altitud
+
+La vista superpone las muestras de altitud desde la primera muestra `ASCENSO`
+hasta el final del vuelo registrado con la parábola de lanzamiento vertical:
+
+```text
+y(t) = y₀ + v₀ᵧ t − ½ g t²
+v₀ᵧ = (y_apogeo − y₀ + ½ g t²) / t
+```
+
+`y₀` y el tiempo cero corresponden a la primera muestra `ASCENSO`. `v₀ᵧ` se
+calcula usando esa muestra y la de máxima altitud como extremos. Se usa
+`g = 9,81 m/s²`. La parábola se prolonga después del apogeo para mostrar el
+descenso teórico junto a las muestras reales. Por construcción coincide con las
+alturas de inicio y apogeo; no es una regresión estadística de todos los puntos.
+El modelo ideal no incluye resistencia del aire ni despliegue de paracaídas, por
+lo que es esperable que su predicción de descenso se separe de la trayectoria
+medida, especialmente después de abrir el paracaídas.
+
+### Velocidad aproximada integrada desde aceleración
+
+Bajo la gráfica de aceleración se muestra una hipótesis de velocidad vertical:
+
+1. Se inicializa en la `v₀ᵧ` obtenida con el modelo de altitud al comienzo de
+   `ASCENSO`.
+2. Se usa la componente **firmada** `az`, no la magnitud
+   `√(ax² + ay² + az²)`, porque una magnitud no indica dirección vertical.
+3. Como `az` está en g y representa aceleración específica del acelerómetro, se
+   resta la media de `az` durante ARMADO y se corrige el signo según la
+   orientación indicada por ese reposo:
+
+   ```text
+   a_vertical ≈ (az − media_az_ARMADO) × signo(media_az_ARMADO) × 9,81
+   ```
+
+   La estimación requiere que `|media_az_ARMADO| ≥ 0,25 g`; este umbral solo
+   comprueba que exista una referencia de orientación suficientemente clara, no
+   demuestra que el eje Z esté exactamente vertical.
+4. Se integra desde la primera muestra `ASCENSO` con la regla trapezoidal:
+
+   ```text
+   vᵢ = vᵢ₋₁ + (aᵢ₋₁ + aᵢ) / 2 × (tᵢ − tᵢ₋₁)
+   ```
+
+Es una estimación, no velocidad medida. Supone que el eje Z se mantiene alineado
+con la vertical y que la referencia ARMADO permite compensar la gravedad. Una
+rotación del cohete, inclinación inicial, deriva del sensor, vibración o pérdidas
+de muestras pueden hacer que la curva se aparte mucho de la velocidad real. Si
+falta referencia ARMADO clara o un tramo ASCENSO válido, no se dibuja la
+estimación. No se aplica filtrado adicional ni se procesa el giroscopio.
+
 ## Qué muestra Análisis
 
 ### Calidad de datos

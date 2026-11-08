@@ -12,7 +12,9 @@ export default function Tabs({ activeTab, onChange, options }) {
           aria-controls={`panel-${key}`}
           onClick={() => onChange(key)}
         >
-          <span className="tab__index">{key === "resumen" ? "01" : "02"}</span>
+          <span className="tab__index">
+            {String(options.findIndex(([optionKey]) => optionKey === key) + 1).padStart(2, "0")}
+          </span>
           {label}
         </button>
       ))}

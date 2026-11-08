@@ -13,7 +13,12 @@ ChartJS.defaults.color = "#88a77e";
 ChartJS.defaults.font.family = '"Courier New", Consolas, monospace';
 ChartJS.defaults.borderColor = "rgba(98, 134, 83, 0.26)";
 
-export default function LineChart({ rows, series, yLabel }) {
+export default function LineChart({
+  rows,
+  series,
+  yLabel,
+  xLabel = "TIEMPO RELATIVO (s)",
+}) {
   const step = Math.max(1, Math.ceil(rows.length / 1500));
   const points = rows.filter((_, index) => index % step === 0);
   if (points[points.length - 1] !== rows[rows.length - 1]) {
@@ -26,6 +31,7 @@ export default function LineChart({ rows, series, yLabel }) {
       borderColor: item.color,
       backgroundColor: item.color,
       borderWidth: 1.5,
+      borderDash: item.borderDash ?? [],
       pointRadius: 0,
       pointHoverRadius: 3,
       tension: 0.18,
@@ -54,7 +60,7 @@ export default function LineChart({ rows, series, yLabel }) {
         type: "linear",
         title: {
           display: true,
-          text: "TIEMPO DESDE ENCENDIDO (s)",
+          text: xLabel,
           color: "#78966e",
         },
         grid: { color: "rgba(98, 134, 83, 0.14)" },

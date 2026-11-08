@@ -4,6 +4,7 @@ import FileUpload from "./components/FileUpload.jsx";
 import Tabs from "./components/Tabs.jsx";
 import ResumenView from "./views/ResumenView.jsx";
 import AnalisisView from "./views/AnalisisView.jsx";
+import ArreglosView from "./views/ArreglosView.jsx";
 import HistoryView from "./views/HistoryView.jsx";
 import {
   chooseArchiveDirectory,
@@ -185,12 +186,15 @@ export default function App() {
                 options={[
                   ["resumen", "Resumen"],
                   ["analisis", "Análisis"],
+                  ["arreglos", "Arreglos"],
                 ]}
               />
               {activeTab === "resumen" ? (
                 <ResumenView data={data} />
-              ) : (
+              ) : activeTab === "analisis" ? (
                 <AnalisisView data={data} />
+              ) : (
+                <ArreglosView data={data} />
               )}
             </>
           ) : (

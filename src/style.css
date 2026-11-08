@@ -647,6 +647,74 @@ td:first-child {
   font-size: 0.67rem;
 }
 
+.adjustments__intro {
+  max-width: 900px;
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.adjustments__stats {
+  margin-bottom: 12px;
+}
+
+.adjustments__time {
+  margin: 12px 0;
+  line-height: 1.5;
+}
+
+.adjustments__phases {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.adjustments__phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid rgb(67 91 61 / 60%);
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.adjustments__phase span {
+  color: var(--amber);
+}
+
+.adjustments__charts {
+  margin-top: 12px;
+}
+
+.adjustments__model {
+  padding-top: 13px;
+  margin-top: 14px;
+  border-top: 1px solid rgb(67 91 61 / 48%);
+}
+
+.adjustments__model-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin-top: 10px;
+  color: var(--green);
+  font-size: 0.73rem;
+}
+
+.adjustments__caveat {
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: 0.69rem;
+  line-height: 1.6;
+}
+
+.adjustments__note {
+  margin-top: 18px;
+}
+
 .physics {
   display: flex;
   align-items: center;
